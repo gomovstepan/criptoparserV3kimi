@@ -17,7 +17,7 @@ import redis.asyncio as redis
 
 from bot import router, notify_all
 from formatter import format_opportunity, format_trade
-from queue import TelegramQueue
+from notifier.queue import TelegramQueue
 
 uvloop.install()
 

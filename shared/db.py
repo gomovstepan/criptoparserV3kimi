@@ -25,7 +25,9 @@ async def get_db_pool() -> asyncpg.Pool:
         if DB_POOL is not None and not DB_POOL._closed:
             return DB_POOL
 
-        db_url = os.getenv("DATABASE_URL")
+        db_url = os.getenv("DATABASE_URL", "")
+        # Нормализуем DSN: asyncpg принимает только "postgresql://" или "postgres://"
+        db_url = db_url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres+asyncpg://", "postgresql://")
         if not db_url:
             host = os.getenv("POSTGRES_HOST", "timescaledb")
             port = os.getenv("POSTGRES_PORT", "5432")

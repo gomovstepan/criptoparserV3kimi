@@ -9,7 +9,7 @@ EXCHANGE_MAP: Dict[str, type] = {
     "binance": ccxt.binance,
     "bybit": ccxt.bybit,
     "kucoin": ccxt.kucoin,
-    "gateio": ccxt.gateio,
+    "gateio": ccxt.gate,
     "bitget": ccxt.bitget,
     "coinex": ccxt.coinex,
     "bingx": ccxt.bingx,
