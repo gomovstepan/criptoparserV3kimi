@@ -14,9 +14,9 @@
 **Шаги:**
 1. Запустить `docker-compose up -d`
 2. Подождать 30 секунд
-3. Выполнить: `curl http://localhost:8001/health`
-4. Выполнить: `curl http://localhost:8002/health`
-5. Выполнить: `curl http://localhost:8003/health`
+3. Выполнить: `curl http://localhost:808001/health`
+4. Выполнить: `curl http://localhost:808002/health`
+5. Выполнить: `curl http://localhost:808003/health`
 
 **Ожидаемый результат:**
 - collector: `status: "healthy"`, `ws_connections >= 1`
@@ -42,7 +42,7 @@
 
 **Шаги:**
 1. Подождать 2 минуты после запуска
-2. Выполнить: `curl http://localhost:8002/health`
+2. Выполнить: `curl http://localhost:808002/health`
 3. Проверить TimescaleDB:
    ```bash
    docker-compose exec timescaledb psql -U arbitrage -d arbitrage_db -c "SELECT COUNT(*) FROM opportunities;"
@@ -58,7 +58,7 @@
 
 **Шаги:**
 1. Подождать 3 минуты после запуска
-2. Выполнить: `curl http://localhost:8003/health`
+2. Выполнить: `curl http://localhost:808003/health`
 3. Проверить: `docker-compose logs executor | grep "Trade executed"`
 
 **Ожидаемый результат:**
@@ -89,9 +89,9 @@
 ## Сценарий 6: Kill switch
 
 **Шаги:**
-1. Выполнить: `curl -X POST http://localhost:8003/killswitch?reason=test`
-2. Проверить: `curl http://localhost:8003/health`
-3. Выполнить: `curl -X POST http://localhost:8003/killswitch/reset`
+1. Выполнить: `curl -X POST http://localhost:808003/killswitch?reason=test`
+2. Проверить: `curl http://localhost:808003/health`
+3. Выполнить: `curl -X POST http://localhost:808003/killswitch/reset`
 
 **Ожидаемый результат:**
 - Шаг 1: `{"status": "activated"}`
@@ -105,7 +105,7 @@
 **Шаги:**
 1. Запустить с killswitch активным
 2. Подождать 2 минуты
-3. Выполнить: `curl http://localhost:8003/dead-letter`
+3. Выполнить: `curl http://localhost:808003/dead-letter`
 
 **Ожидаемый результат:**
 - Список failed trades с reason и error_message

@@ -74,23 +74,23 @@ docker-compose ps
 
 ```bash
 # Collector (WebSocket сборщик)
-curl http://localhost:8001/health
+curl http://localhost:808001/health
 # -> {"status": "healthy", "service": "collector", "ws_connections": 7, ...}
 
 # Scanner (расчёт спредов)
-curl http://localhost:8002/health
+curl http://localhost:808002/health
 # -> {"status": "healthy", "service": "scanner", "opportunities_found": N}
 
 # Executor (paper trading)
-curl http://localhost:8003/health
+curl http://localhost:808003/health
 # -> {"status": "healthy", "service": "executor", "trades_today": N}
 
 # API Gateway
-curl http://localhost:8000/health
+curl http://localhost:808000/health
 # -> {"status": "healthy", "service": "api-gateway", "ws_clients_active": 0}
 
 # Notifier
-curl http://localhost:8004/health
+curl http://localhost:808004/health
 # -> {"status": "healthy", "service": "notifier", "telegram_connected": true}
 ```
 
@@ -98,38 +98,38 @@ curl http://localhost:8004/health
 
 ```bash
 # Логин (получить JWT)
-curl -X POST http://localhost:8000/api/v1/auth/login \
+curl -X POST http://localhost:808000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "test@example.com", "password": "test123"}'
 # -> {"access_token": "eyJ...", "token_type": "bearer"}
 
 # Получить цены
-curl http://localhost:8000/api/v1/prices \
+curl http://localhost:808000/api/v1/prices \
   -H "Authorization: Bearer $TOKEN"
 
 # Получить возможности
-curl http://localhost:8000/api/v1/opportunities?min_spread=0.2 \
+curl http://localhost:808000/api/v1/opportunities?min_spread=0.2 \
   -H "Authorization: Bearer $TOKEN"
 
 # Получить сделки
-curl http://localhost:8000/api/v1/trades \
+curl http://localhost:808000/api/v1/trades \
   -H "Authorization: Bearer $TOKEN"
 
 # Получить балансы
-curl http://localhost:8000/api/v1/balance \
+curl http://localhost:808000/api/v1/balance \
   -H "Authorization: Bearer $TOKEN"
 
 # Активировать kill switch
-curl -X POST http://localhost:8003/killswitch?reason=manual
+curl -X POST http://localhost:808003/killswitch?reason=manual
 
 # Сбросить kill switch
-curl -X POST http://localhost:8003/killswitch/reset
+curl -X POST http://localhost:808003/killswitch/reset
 
 # Получить dead letter queue
-curl http://localhost:8003/dead-letter
+curl http://localhost:808003/dead-letter
 
 # Prometheus метрики
-curl http://localhost:8000/metrics
+curl http://localhost:808000/metrics
 ```
 
 ### Frontend
