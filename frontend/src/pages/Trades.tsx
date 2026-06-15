@@ -1,17 +1,33 @@
-import { useState, useMemo } from "react";
+/**
+ * Trades — реальные paper trading сделки с backend.
+ */
+
+import { useEffect, useState, useMemo } from "react";
 import { useDashboardStore } from "@/store/dashboardStore";
-import { ArrowLeftRight, Download, Search } from "lucide-react";
+import { ArrowLeftRight, Download, Search, RefreshCw } from "lucide-react";
 
 export default function Trades() {
-  const { trades } = useDashboardStore();
+  const { trades, fetchTrades } = useDashboardStore();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+
+  // Загрузка при mount
+  useEffect(() => {
+    setLoading(true);
+    fetchTrades().finally(() => setLoading(false));
+    const interval = setInterval(() => fetchTrades(), 10000);
+    return () => clearInterval(interval);
+  }, [fetchTrades]);
 
   const filtered = useMemo(() => {
     let data = [...trades];
     if (search) {
       const q = search.toLowerCase();
-      data = data.filter((t) => t.symbol.toLowerCase().includes(q) || t.id.toLowerCase().includes(q));
+      data = data.filter((t) =>
+        t.symbol.toLowerCase().includes(q) ||
+        t.id.toLowerCase().includes(q)
+      );
     }
     if (statusFilter !== "all") {
       data = data.filter((t) => t.status === statusFilter);
@@ -19,13 +35,23 @@ export default function Trades() {
     return data;
   }, [trades, search, statusFilter]);
 
-  const totalPnl = filtered.reduce((sum, t) => sum + t.net_pnl, 0);
+  const totalPnl = filtered.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">История сделок</h1>
-        <p className="text-sm text-text-secondary mt-0.5">Журнал paper trading сделок</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">История сделок</h1>
+          <p className="text-sm text-text-secondary mt-0.5">Журнал paper trading сделок</p>
+        </div>
+        <button
+          onClick={() => { setLoading(true); fetchTrades().finally(() => setLoading(false)); }}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 h-10 rounded-lg border border-[#1e1e2e] text-text-secondary hover:bg-surface transition-all disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          <span className="text-sm">Обновить</span>
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -58,33 +84,41 @@ export default function Trades() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((trade) => {
-                const time = new Date(trade.executed_at).toLocaleString("ru-RU");
-                return (
-                  <tr key={trade.id} className="border-b border-[#1e1e2e] hover:bg-white/[0.03] transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-text-muted">#{trade.id.slice(-6)}</td>
-                    <td className="px-4 py-3 text-xs text-text-muted">{time}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-text-primary">{trade.symbol}</td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{trade.buy_exchange}</td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{trade.sell_exchange}</td>
-                    <td className="px-4 py-3 font-mono text-sm text-text-primary">{trade.amount.toFixed(4)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`font-mono font-semibold tabular-nums ${trade.net_pnl >= 0 ? "text-success" : "text-danger"}`}>
-                        {trade.net_pnl >= 0 ? "+" : ""}{trade.net_pnl.toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium ${
-                        trade.status === "completed" ? "bg-success/15 text-success" :
-                        trade.status === "pending" ? "bg-warning/15 text-warning" :
-                        "bg-danger/15 text-danger"
-                      }`}>
-                        {trade.status === "completed" ? "Завершена" : trade.status === "pending" ? "В процессе" : "Ошибка"}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center text-text-muted text-sm">
+                    {loading ? "Загрузка с backend..." : "Нет сделок"}
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((trade) => {
+                  const time = new Date(trade.executed_at).toLocaleString("ru-RU");
+                  return (
+                    <tr key={trade.id} className="border-b border-[#1e1e2e] hover:bg-white/[0.03] transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs text-text-muted">#{trade.id.slice(-6)}</td>
+                      <td className="px-4 py-3 text-xs text-text-muted">{time}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-text-primary">{trade.symbol}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{trade.buy_exchange}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{trade.sell_exchange}</td>
+                      <td className="px-4 py-3 font-mono text-sm text-text-primary">{(trade.amount || 0).toFixed(4)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`font-mono font-semibold tabular-nums ${(trade.net_pnl || 0) >= 0 ? "text-success" : "text-danger"}`}>
+                          {(trade.net_pnl || 0) >= 0 ? "+" : ""}{(trade.net_pnl || 0).toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-md text-xs font-medium ${
+                          trade.status === "completed" ? "bg-success/15 text-success" :
+                          trade.status === "pending" ? "bg-warning/15 text-warning" :
+                          "bg-danger/15 text-danger"
+                        }`}>
+                          {trade.status === "completed" ? "Завершена" : trade.status === "pending" ? "В процессе" : "Ошибка"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
