@@ -1,0 +1,170 @@
+version: "3.9"
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: arbitrage-timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-arbitrage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-arbitrage_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-arbitrage_db}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-arbitrage}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - arbitrage-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: arbitrage-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - arbitrage-net
+
+  collector:
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
+    container_name: arbitrage-collector
+    ports:
+      - "8001:8001"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-arbitrage}:${POSTGRES_PASSWORD:-arbitrage_pass}@timescaledb:5432/${POSTGRES_DB:-arbitrage_db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - arbitrage-net
+    restart: on-failure:5
+
+  scanner:
+    build:
+      context: .
+      dockerfile: scanner/Dockerfile
+    container_name: arbitrage-scanner
+    ports:
+      - "8002:8002"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-arbitrage}:${POSTGRES_PASSWORD:-arbitrage_pass}@timescaledb:5432/${POSTGRES_DB:-arbitrage_db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - arbitrage-net
+    restart: on-failure:5
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: arbitrage-api-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-arbitrage}:${POSTGRES_PASSWORD:-arbitrage_pass}@timescaledb:5432/${POSTGRES_DB:-arbitrage_db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - arbitrage-net
+    restart: on-failure:5
+
+  executor:
+    build:
+      context: .
+      dockerfile: executor/Dockerfile
+    container_name: arbitrage-executor
+    ports:
+      - "8003:8003"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-arbitrage}:${POSTGRES_PASSWORD:-arbitrage_pass}@timescaledb:5432/${POSTGRES_DB:-arbitrage_db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - arbitrage-net
+    restart: on-failure:5
+
+  notifier:
+    build:
+      context: .
+      dockerfile: notifier/Dockerfile
+    container_name: arbitrage-notifier
+    ports:
+      - "8004:8004"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - arbitrage-net
+    restart: on-failure:5
+
+volumes:
+  timescaledb_data:
+  redis_data:
+
+networks:
+  arbitrage-net:
+    driver: bridge
