@@ -94,8 +94,9 @@ services:
       context: .
       dockerfile: api-gateway/Dockerfile
     container_name: arbitrage-api-gateway
-    ports:
-      - "8000:8000"
+    # Порт 8000 только внутри сети (через nginx)
+    expose:
+      - "8000"
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -110,6 +111,19 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    networks:
+      - arbitrage-net
+    restart: on-failure:5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: arbitrage-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
     networks:
       - arbitrage-net
     restart: on-failure:5

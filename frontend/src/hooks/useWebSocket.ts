@@ -3,7 +3,13 @@ import { useDashboardStore } from "@/store/dashboardStore";
 
 type WSStatus = "connecting" | "connected" | "disconnected";
 
-export function useWebSocket(url: string) {
+/**
+ * WebSocket hook с auto-reconnect.
+ * URL определяется автоматически: /ws через nginx reverse proxy.
+ */
+const DEFAULT_WS_URL = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
+
+export function useWebSocket(url: string = DEFAULT_WS_URL) {
   const [status, setStatus] = useState<WSStatus>("connecting");
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);

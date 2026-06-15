@@ -4,7 +4,8 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { Toaster } from "sonner";
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  useWebSocket("ws://localhost:8000/ws");
+  // WebSocket через nginx reverse proxy (/ws → api-gateway:8000/ws)
+  useWebSocket();
 
   return (
     <div className="min-h-screen bg-page">
