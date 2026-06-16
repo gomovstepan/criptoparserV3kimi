@@ -1,91 +1,97 @@
-import { useState } from "react";
-import { useDashboardStore } from "@/store/dashboardStore";
-import { Building2, Wifi, WifiOff, ArrowUpDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Wifi, WifiOff, Loader2 } from "lucide-react";
+import { getExchanges } from "../lib/api";
+import { useDashboardStore } from "../store/dashboardStore";
 
-const exchangeData = [
-  { id: "binance", name: "Binance", makerFee: 0.10, takerFee: 0.10, withdrawalBtc: 0.0005, withdrawalUsdt: 0, wsEndpoint: "wss://stream.binance.com:9443", restEndpoint: "https://api.binance.com" },
-  { id: "bybit", name: "Bybit", makerFee: 0.10, takerFee: 0.10, withdrawalBtc: 0.000085, withdrawalUsdt: 1.0, wsEndpoint: "wss://stream.bybit.com", restEndpoint: "https://api.bybit.com" },
-  { id: "kucoin", name: "KuCoin", makerFee: 0.10, takerFee: 0.10, withdrawalBtc: 0, withdrawalUsdt: 0, wsEndpoint: "wss://ws-api.kucoin.com", restEndpoint: "https://api.kucoin.com" },
-  { id: "bitget", name: "Bitget", makerFee: 0.10, takerFee: 0.10, withdrawalBtc: 0.0003, withdrawalUsdt: 1.0, wsEndpoint: "wss://ws.bitget.com", restEndpoint: "https://api.bitget.com" },
-  { id: "gateio", name: "Gate.io", makerFee: 0.30, takerFee: 0.30, withdrawalBtc: 0.001, withdrawalUsdt: 1.0, wsEndpoint: "wss://api.gateio.ws", restEndpoint: "https://api.gateio.ws" },
-  { id: "coinex", name: "CoinEx", makerFee: 0.20, takerFee: 0.20, withdrawalBtc: 0.0001, withdrawalUsdt: 1.0, wsEndpoint: "wss://socket.coinex.com", restEndpoint: "https://api.coinex.com" },
-  { id: "bingx", name: "BingX", makerFee: 0.10, takerFee: 0.10, withdrawalBtc: 0.00035, withdrawalUsdt: 1.0, wsEndpoint: "wss://open-api-ws.bingx.com", restEndpoint: "https://open-api.bingx.com" },
-];
+interface ExchangeInfo {
+  exchange: string;
+  is_active: boolean;
+  maker_fee_pct: number;
+  taker_fee_pct: number;
+  withdrawal_btc: number | null;
+  withdrawal_usdt: number | null;
+}
+
+const defaultExchanges: Record<string, ExchangeInfo> = {
+  binance: { exchange: "Binance", is_active: true, maker_fee_pct: 0.1, taker_fee_pct: 0.1, withdrawal_btc: 0.0005, withdrawal_usdt: 0 },
+  bybit: { exchange: "Bybit", is_active: true, maker_fee_pct: 0.1, taker_fee_pct: 0.1, withdrawal_btc: 0.000085, withdrawal_usdt: 1 },
+  kucoin: { exchange: "KuCoin", is_active: true, maker_fee_pct: 0.1, taker_fee_pct: 0.1, withdrawal_btc: 0, withdrawal_usdt: 0 },
+  bitget: { exchange: "Bitget", is_active: true, maker_fee_pct: 0.1, taker_fee_pct: 0.1, withdrawal_btc: 0.0003, withdrawal_usdt: 1 },
+  gateio: { exchange: "Gate.io", is_active: false, maker_fee_pct: 0.3, taker_fee_pct: 0.3, withdrawal_btc: 0.001, withdrawal_usdt: 1 },
+  coinex: { exchange: "CoinEx", is_active: true, maker_fee_pct: 0.2, taker_fee_pct: 0.2, withdrawal_btc: 0.0001, withdrawal_usdt: 1 },
+  bingx: { exchange: "BingX", is_active: true, maker_fee_pct: 0.1, taker_fee_pct: 0.1, withdrawal_btc: 0.00035, withdrawal_usdt: 1 },
+};
 
 export default function Exchanges() {
   const { exchangeStatus } = useDashboardStore();
+  const [data, setData] = useState<Record<string, ExchangeInfo>>(defaultExchanges);
+  const [loading, setLoading] = useState(true);
   const [activeOnly, setActiveOnly] = useState(false);
 
-  const filtered = activeOnly
-    ? exchangeData.filter((e) => exchangeStatus[e.id]?.connected)
-    : exchangeData;
+  useEffect(() => {
+    getExchanges().then((res) => { if (res && Object.keys(res).length > 0) setData(res); }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const entries = Object.entries(data).filter(([, info]) => !activeOnly || info.is_active);
+  const onlineCount = Object.values(data).filter((i) => i.is_active).length;
+
+  if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-6 h-6 animate-spin text-[#00d4aa]" /></div>;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Биржи</h1>
-          <p className="text-sm text-text-secondary mt-0.5">Конфигурация и статус 7 бирж</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-4">
+          <div className="text-sm"><span className="text-[#94a3b8]">Активных: </span><span className="font-mono font-semibold text-[#22c55e]">{onlineCount}</span></div>
+          <div className="text-sm"><span className="text-[#94a3b8]">Всего: </span><span className="font-mono font-semibold text-[#f1f5f9]">{Object.keys(data).length}</span></div>
         </div>
         <label className="flex items-center gap-2 cursor-pointer">
-          <span className="text-sm text-text-secondary">Только активные</span>
-          <div className={`w-11 h-6 rounded-full transition-colors relative ${activeOnly ? "bg-primary" : "bg-[#2a2a40]"}`}
-            onClick={() => setActiveOnly(!activeOnly)}>
-            <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${activeOnly ? "translate-x-[22px]" : "translate-x-0.5"}`} />
-          </div>
+          <span className="text-sm text-[#94a3b8]">Только активные</span>
+          <button onClick={() => setActiveOnly(!activeOnly)} className="w-11 h-6 rounded-full relative transition-colors" style={{ background: activeOnly ? "#00d4aa" : "#2a2a40" }}>
+            <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform" style={{ transform: activeOnly ? "translateX(22px)" : "translateX(2px)" }} />
+          </button>
         </label>
       </div>
 
-      <div className="bg-surface border border-[#1e1e2e] rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#0f0f1a]">
-                {["Биржа", "Статус", "Maker", "Taker", "BTC вывод", "USDT вывод", "WS Endpoint"].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-[13px] font-medium text-text-secondary">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((ex) => {
-                const status = exchangeStatus[ex.id];
-                return (
-                  <tr key={ex.id} className="border-b border-[#1e1e2e] hover:bg-white/[0.03] transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-[#1a1a2e] flex items-center justify-center text-xs font-bold text-text-primary">
-                          {ex.name.slice(0, 2)}
-                        </div>
-                        <span className="text-sm font-semibold text-text-primary">{ex.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        {status?.connected ? (
-                          <>
-                            <Wifi className="w-3.5 h-3.5 text-success" />
-                            <span className="text-xs text-success">Online</span>
-                            <span className="text-xs text-text-muted">({status.latency}ms)</span>
-                          </>
-                        ) : (
-                          <>
-                            <WifiOff className="w-3.5 h-3.5 text-danger" />
-                            <span className="text-xs text-danger">Offline</span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-sm text-text-primary">{ex.makerFee}%</td>
-                    <td className="px-4 py-3 font-mono text-sm text-text-primary">{ex.takerFee}%</td>
-                    <td className="px-4 py-3 font-mono text-sm text-text-primary">{ex.withdrawalBtc || "0"}</td>
-                    <td className="px-4 py-3 font-mono text-sm text-text-primary">{ex.withdrawalUsdt || "0"}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-text-muted truncate max-w-[200px]">{ex.wsEndpoint}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <div className="rounded-xl overflow-hidden" style={{ background: "#12121f", border: "1px solid #1e1e2e" }}>
+        <table className="w-full">
+          <thead><tr style={{ background: "#0f0f1a" }}>
+            {["Биржа", "Статус", "Задержка", "Maker", "Taker", "BTC вывод", "USDT вывод"].map((h) =>
+              <th key={h} className="text-left px-4 py-3 text-[13px] font-medium text-[#94a3b8]">{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {entries.map(([id, info]) => {
+              const st = exchangeStatus[id];
+              const connected = st?.connected;
+              const lat = st?.latency || 0;
+              return (
+                <tr key={id} className="border-b border-[#1e1e2e] hover:bg-white/[0.03] transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-[#f1f5f9]" style={{ background: "#1a1a2e" }}>{info.exchange.slice(0, 2)}</div>
+                      <span className="text-sm font-semibold text-[#f1f5f9]">{info.exchange}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {info.is_active ? (
+                      <span className="flex items-center gap-1 text-xs text-[#22c55e]"><Wifi className="w-3.5 h-3.5" /> Online</span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-[#ef4444]"><WifiOff className="w-3.5 h-3.5" /> Offline</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {connected ? (
+                      <span className="text-sm font-mono" style={{ color: lat < 100 ? "#22c55e" : lat < 300 ? "#f59e0b" : "#ef4444" }}>{lat}ms</span>
+                    ) : <span className="text-sm text-[#64748b]">—</span>}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-sm text-[#f1f5f9]">{info.maker_fee_pct}%</td>
+                  <td className="px-4 py-3 font-mono text-sm text-[#f1f5f9]">{info.taker_fee_pct}%</td>
+                  <td className="px-4 py-3 font-mono text-sm text-[#f1f5f9]">{info.withdrawal_btc ?? "0"}</td>
+                  <td className="px-4 py-3 font-mono text-sm text-[#f1f5f9]">{info.withdrawal_usdt ?? "0"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );

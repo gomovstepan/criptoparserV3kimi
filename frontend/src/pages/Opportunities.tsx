@@ -1,202 +1,94 @@
-/**
- * Opportunities — реальные данные с backend.
- * 
- * Загружает через REST API, обновляется через WebSocket push.
- */
+import { useState, useMemo } from "react";
+import { Search, SlidersHorizontal } from "lucide-react";
+import { useDashboardStore } from "../store/dashboardStore";
 
-import { useEffect, useState, useMemo } from "react";
-import { useDashboardStore, type Opportunity } from "@/store/dashboardStore";
-import {
-  Search, SlidersHorizontal, RefreshCw, Eye, ArrowUpDown,
-} from "lucide-react";
-
-type SortKey = "gross_spread_pct" | "net_spread_pct" | "symbol";
-type SortDir = "asc" | "desc";
-
-function SpreadColor({ value }: { value: number }) {
-  if (value > 0.30) return <span className="font-mono text-success font-semibold tabular-nums">{value.toFixed(3)}%</span>;
-  if (value > 0.15) return <span className="font-mono text-warning font-medium tabular-nums">{value.toFixed(3)}%</span>;
-  return <span className="font-mono text-text-muted tabular-nums">{value.toFixed(3)}%</span>;
+function SpreadColor({ v }: { v: number }) {
+  const c = v > 0.3 ? "#22c55e" : v > 0.15 ? "#f59e0b" : "#64748b";
+  return <span className="font-mono text-sm font-semibold tabular-nums" style={{ color: c }}>{v.toFixed(3)}%</span>;
 }
 
-function NetSpreadColor({ value }: { value: number }) {
-  if (value > 0) return <span className="font-mono text-success font-semibold tabular-nums">+{value.toFixed(3)}%</span>;
-  if (value < 0) return <span className="font-mono text-danger font-semibold tabular-nums">{value.toFixed(3)}%</span>;
-  return <span className="font-mono text-text-muted tabular-nums">{value.toFixed(3)}%</span>;
-}
-
-function PriceFormat({ value }: { value: number }) {
-  return <span className="font-mono text-sm tabular-nums">${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>;
+function PnLColor({ v }: { v: number }) {
+  const c = v >= 0 ? "#22c55e" : "#ef4444";
+  return <span className="font-mono text-sm font-semibold tabular-nums" style={{ color: c }}>{v >= 0 ? "+" : ""}{v.toFixed(3)}%</span>;
 }
 
 export default function Opportunities() {
-  const { opportunities, fetchOpportunities } = useDashboardStore();
+  const { opportunities } = useDashboardStore();
   const [search, setSearch] = useState("");
-  const [exchangeFilter, setExchangeFilter] = useState("all");
-  const [pairFilter, setPairFilter] = useState("all");
-  const [minSpread, setMinSpread] = useState(0);
-  const [sortKey, setSortKey] = useState<SortKey>("gross_spread_pct");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [loading, setLoading] = useState(true);
-
-  // Загрузка при mount
-  useEffect(() => {
-    setLoading(true);
-    fetchOpportunities().finally(() => setLoading(false));
-    const interval = setInterval(() => fetchOpportunities(), 5000);
-    return () => clearInterval(interval);
-  }, [fetchOpportunities]);
+  const [exF, setExF] = useState("all");
+  const [minS, setMinS] = useState(0);
 
   const exchanges = useMemo(() => {
-    const set = new Set<string>();
-    opportunities.forEach((o) => { set.add(o.buy_exchange); set.add(o.sell_exchange); });
-    return Array.from(set).sort();
-  }, [opportunities]);
-
-  const pairs = useMemo(() => {
-    const set = new Set<string>();
-    opportunities.forEach((o) => set.add(o.symbol));
-    return Array.from(set).sort();
+    const exs = new Set<string>();
+    opportunities.forEach((o) => { exs.add(o.buy_exchange); exs.add(o.sell_exchange); });
+    return Array.from(exs).sort();
   }, [opportunities]);
 
   const filtered = useMemo(() => {
-    let data = [...opportunities];
-    if (search) {
-      const q = search.toLowerCase();
-      data = data.filter((o) =>
-        o.symbol.toLowerCase().includes(q) ||
-        o.buy_exchange.toLowerCase().includes(q) ||
-        o.sell_exchange.toLowerCase().includes(q)
-      );
-    }
-    if (exchangeFilter !== "all") {
-      data = data.filter((o) => o.buy_exchange === exchangeFilter || o.sell_exchange === exchangeFilter);
-    }
-    if (pairFilter !== "all") {
-      data = data.filter((o) => o.symbol === pairFilter);
-    }
-    if (minSpread > 0) {
-      data = data.filter((o) => (o.gross_spread_pct || 0) >= minSpread / 100);
-    }
-    data.sort((a, b) => {
-      const dir = sortDir === "asc" ? 1 : -1;
-      if (sortKey === "symbol") return dir * a.symbol.localeCompare(b.symbol);
-      return dir * ((a[sortKey] || 0) - (b[sortKey] || 0));
+    return opportunities.filter((o) => {
+      if (search) {
+        const s = search.toLowerCase();
+        if (!o.symbol.toLowerCase().includes(s) && !o.buy_exchange.toLowerCase().includes(s) && !o.sell_exchange.toLowerCase().includes(s)) return false;
+      }
+      if (exF !== "all" && o.buy_exchange !== exF && o.sell_exchange !== exF) return false;
+      if (minS > 0 && o.gross_spread_pct < minS / 100) return false;
+      return true;
     });
-    return data;
-  }, [opportunities, search, exchangeFilter, pairFilter, minSpread, sortKey, sortDir]);
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("desc"); }
-  };
+  }, [opportunities, search, exF, minS]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Арбитражные возможности</h1>
-          <p className="text-sm text-text-secondary mt-0.5">Межбиржевые спреды в реальном времени</p>
-        </div>
-        <button
-          onClick={() => { setLoading(true); fetchOpportunities().finally(() => setLoading(false)); }}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 h-10 rounded-lg border border-[#1e1e2e] text-text-secondary hover:bg-surface transition-all disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          <span className="text-sm">Обновить</span>
-        </button>
-      </div>
-
-      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по паре или бирже..."
-            className="w-full h-10 pl-10 pr-4 rounded-lg bg-input-bg border border-[#1e1e2e] text-text-primary text-sm placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#475569]" />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по паре или бирже..."
+            className="w-full h-10 pl-10 pr-4 rounded-lg bg-[#0f0f1a] border border-[#1e1e2e] text-[#f1f5f9] text-sm placeholder:text-[#475569] focus:border-[#00d4aa] focus:outline-none transition-colors" />
         </div>
-        <select value={exchangeFilter} onChange={(e) => setExchangeFilter(e.target.value)}
-          className="h-10 px-3 rounded-lg bg-input-bg border border-[#1e1e2e] text-text-primary text-sm focus:border-primary focus:outline-none">
+        <select value={exF} onChange={(e) => setExF(e.target.value)}
+          className="h-10 px-3 rounded-lg bg-[#0f0f1a] border border-[#1e1e2e] text-[#f1f5f9] text-sm focus:border-[#00d4aa] focus:outline-none">
           <option value="all">Все биржи</option>
-          {exchanges.map((ex) => <option key={ex} value={ex}>{ex}</option>)}
-        </select>
-        <select value={pairFilter} onChange={(e) => setPairFilter(e.target.value)}
-          className="h-10 px-3 rounded-lg bg-input-bg border border-[#1e1e2e] text-text-primary text-sm focus:border-primary focus:outline-none">
-          <option value="all">Все пары</option>
-          {pairs.map((p) => <option key={p} value={p}>{p}</option>)}
+          {exchanges.map((e) => <option key={e} value={e}>{e}</option>)}
         </select>
         <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-4 h-4 text-text-muted" />
-          <span className="text-xs text-text-muted whitespace-nowrap">Min: {(minSpread / 100).toFixed(2)}%</span>
-          <input type="range" min="0" max="100" value={minSpread} onChange={(e) => setMinSpread(Number(e.target.value))}
-            className="w-24 accent-primary" />
+          <SlidersHorizontal className="w-4 h-4 text-[#64748b]" />
+          <span className="text-xs text-[#64748b]">Min: {(minS / 100).toFixed(2)}%</span>
+          <input type="range" min="0" max="100" value={minS} onChange={(e) => setMinS(Number(e.target.value))} className="w-24" style={{ accentColor: "#00d4aa" }} />
         </div>
-        <button onClick={() => { setSearch(""); setExchangeFilter("all"); setPairFilter("all"); setMinSpread(0); }}
-          className="h-10 px-3 rounded-lg border border-[#1e1e2e] text-text-secondary hover:bg-surface transition-colors flex items-center gap-2 text-sm">
-          <RefreshCw className="w-4 h-4" /> Сбросить
-        </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-surface border border-[#1e1e2e] rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#0f0f1a]">
-                <th className="text-left px-4 py-3 text-[13px] font-medium text-text-secondary">
-                  <button onClick={() => toggleSort("symbol")} className="flex items-center gap-1 hover:text-text-primary transition-colors">Пара <ArrowUpDown className="w-3 h-3" /></button>
-                </th>
-                <th className="text-left px-4 py-3 text-[13px] font-medium text-text-secondary">Покупка</th>
-                <th className="text-left px-4 py-3 text-[13px] font-medium text-text-secondary">Продажа</th>
-                <th className="text-right px-4 py-3 text-[13px] font-medium text-text-secondary">
-                  <button onClick={() => toggleSort("gross_spread_pct")} className="flex items-center gap-1 ml-auto hover:text-text-primary transition-colors">Спред <ArrowUpDown className="w-3 h-3" /></button>
-                </th>
-                <th className="text-right px-4 py-3 text-[13px] font-medium text-text-secondary">Цена покупки</th>
-                <th className="text-right px-4 py-3 text-[13px] font-medium text-text-secondary">Цена продажи</th>
-                <th className="text-right px-4 py-3 text-[13px] font-medium text-text-secondary">
-                  <button onClick={() => toggleSort("net_spread_pct")} className="flex items-center gap-1 ml-auto hover:text-text-primary transition-colors">Net спред <ArrowUpDown className="w-3 h-3" /></button>
-                </th>
-                <th className="text-center px-4 py-3 text-[13px] font-medium text-text-secondary">Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <Search className="w-10 h-10 text-text-muted" />
-                      <p className="text-text-secondary font-medium">{loading ? "Загрузка с backend..." : "Нет данных"}</p>
-                      <p className="text-text-muted text-sm">{loading ? "Ожидание от scanner сервиса" : "Попробуйте изменить фильтры"}</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((opp) => (
-                  <tr key={opp.id} className="border-b border-[#1e1e2e] hover:bg-white/[0.03] transition-colors"
-                    style={(opp.gross_spread_pct || 0) > 0.30 ? { borderLeft: "3px solid #00d4aa" } : {}}>
-                    <td className="px-4 py-3.5 text-sm font-semibold text-text-primary">{opp.symbol}</td>
-                    <td className="px-4 py-3.5 text-sm text-text-secondary">{opp.buy_exchange}</td>
-                    <td className="px-4 py-3.5 text-sm text-text-secondary">{opp.sell_exchange}</td>
-                    <td className="px-4 py-3.5 text-right"><SpreadColor value={opp.gross_spread_pct || 0} /></td>
-                    <td className="px-4 py-3.5 text-right"><PriceFormat value={opp.buy_price || 0} /></td>
-                    <td className="px-4 py-3.5 text-right"><PriceFormat value={opp.sell_price || 0} /></td>
-                    <td className="px-4 py-3.5 text-right"><NetSpreadColor value={opp.net_spread_pct || 0} /></td>
-                    <td className="px-4 py-3.5 text-center">
-                      <button className="p-1.5 rounded-md hover:bg-[#1a1a2e] transition-colors text-text-muted hover:text-text-primary">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </td>
+      <div className="rounded-xl overflow-hidden" style={{ background: "#12121f", border: "1px solid #1e1e2e" }}>
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-sm text-[#64748b]">
+            {opportunities.length === 0 ? "Нет данных — ожидание от сканера..." : "Ничего не найдено"}
+          </div>
+        ) : (
+          <>
+            <table className="w-full">
+              <thead><tr style={{ background: "#0f0f1a" }}>
+                {["Пара", "Покупка", "Продажа", "Спред", "Цена покупки", "Цена продажи", "Net спред"].map((h) =>
+                  <th key={h} className="text-left px-4 py-3 text-[13px] font-medium text-[#94a3b8]">{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {filtered.map((o) => (
+                  <tr key={o.id} className="border-b border-[#1e1e2e] hover:bg-white/[0.03] transition-colors"
+                    style={o.gross_spread_pct > 0.3 ? { borderLeft: "3px solid #00d4aa" } : o.gross_spread_pct > 0.15 ? { borderLeft: "3px solid #f59e0b" } : {}}>
+                    <td className="px-4 py-3.5 text-sm font-semibold text-[#f1f5f9]">{o.symbol}</td>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: "#22c55e" }}>{o.buy_exchange}</td>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: "#ef4444" }}>{o.sell_exchange}</td>
+                    <td className="px-4 py-3.5"><SpreadColor v={o.gross_spread_pct} /></td>
+                    <td className="px-4 py-3.5 font-mono text-sm text-[#f1f5f9]">${o.buy_price?.toLocaleString() || "—"}</td>
+                    <td className="px-4 py-3.5 font-mono text-sm text-[#f1f5f9]">${o.sell_price?.toLocaleString() || "—"}</td>
+                    <td className="px-4 py-3.5"><PnLColor v={o.net_spread_pct} /></td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-5 py-3 border-t border-[#1e1e2e] flex items-center justify-between">
-          <span className="text-xs text-text-muted">Показано {filtered.length} из {opportunities.length}</span>
-          <span className="text-xs text-text-muted">Обновлено: {new Date().toLocaleTimeString("ru-RU")}</span>
-        </div>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-5 py-3 flex justify-between items-center" style={{ borderTop: "1px solid #1e1e2e" }}>
+              <span className="text-xs text-[#64748b]">{filtered.length} из {opportunities.length}</span>
+              <span className="text-xs text-[#64748b]">{new Date().toLocaleTimeString("ru-RU")}</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

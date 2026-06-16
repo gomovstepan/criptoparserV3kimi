@@ -1,94 +1,101 @@
 import { useMemo } from "react";
-import { useDashboardStore } from "@/store/dashboardStore";
-import { BarChart3, TrendingUp, TrendingDown, Activity, Target, Clock } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { TrendingUp, TrendingDown, BarChart3, Target, DollarSign, Activity } from "lucide-react";
+import { useDashboardStore } from "../store/dashboardStore";
 
-const dailyPnl = Array.from({ length: 7 }, (_, i) => ({
-  day: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"][i],
-  pnl: Math.round((Math.sin(i * 0.8) * 40 + Math.random() * 20 - 5) * 100) / 100,
-  trades: Math.floor(Math.random() * 15) + 3,
-}));
-
-const cumulativePnl = dailyPnl.reduce<{ day: string; cumulative: number }[]>((acc, d, i) => {
-  const prev = i > 0 ? acc[i - 1].cumulative : 0;
-  acc.push({ day: d.day, cumulative: Math.round((prev + d.pnl) * 100) / 100 });
-  return acc;
-}, []);
+const chartTheme = {
+  axis: "#64748b", grid: "#1e1e2e", line: "#00d4aa", bar: "#00d4aa",
+  tooltipBg: "#12121f", tooltipBorder: "#1e1e2e", text: "#f1f5f9",
+};
 
 export default function Analytics() {
   const { trades } = useDashboardStore();
 
-  const stats = useMemo(() => {
-    const total = trades.length;
-    const wins = trades.filter((t) => t.net_pnl > 0).length;
-    const totalPnl = trades.reduce((s, t) => s + t.net_pnl, 0);
-    const grossPnl = trades.reduce((s, t) => s + t.gross_pnl, 0);
-    return { total, wins, winRate: total ? Math.round((wins / total) * 100) : 0, totalPnl, grossPnl };
+  const wins = trades.filter((t) => (t.net_pnl || 0) > 0).length;
+  const totalPnl = trades.reduce((s, t) => s + (t.net_pnl || 0), 0);
+  const grossPnl = trades.reduce((s, t) => s + (t.gross_pnl || 0), 0);
+
+  const kpiCards = [
+    { label: "Всего сделок", value: String(trades.length), color: "#00d4aa", icon: BarChart3 },
+    { label: "Win Rate", value: trades.length > 0 ? `${Math.round((wins / trades.length) * 100)}%` : "0%", color: "#3b82f6", icon: Target },
+    { label: "Gross P&L", value: `${grossPnl >= 0 ? "+" : ""}${grossPnl.toFixed(2)}`, color: "#22c55e", icon: DollarSign },
+    { label: "Net P&L", value: `${totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}`, color: totalPnl >= 0 ? "#22c55e" : "#ef4444", icon: totalPnl >= 0 ? TrendingUp : TrendingDown },
+    { label: "Прибыльных", value: String(wins), color: "#22c55e", icon: TrendingUp },
+    { label: "Убыточных", value: String(trades.length - wins), color: "#ef4444", icon: TrendingDown },
+  ];
+
+  const cumulativeData = useMemo(() => {
+    let cum = 0;
+    return trades.map((t, i) => {
+      cum += t.net_pnl || 0;
+      return { idx: i + 1, cumulative: Math.round(cum * 100) / 100, pnl: t.net_pnl || 0 };
+    });
   }, [trades]);
 
-  const statCards = [
-    { label: "Всего сделок", value: String(stats.total), icon: Activity, color: "text-primary" },
-    { label: "Win Rate", value: `${stats.winRate}%`, icon: Target, color: "text-info" },
-    { label: "Gross P&L", value: `${stats.grossPnl >= 0 ? "+" : ""}${stats.grossPnl.toFixed(2)}`, icon: TrendingUp, color: stats.grossPnl >= 0 ? "text-success" : "text-danger" },
-    { label: "Net P&L", value: `${stats.totalPnl >= 0 ? "+" : ""}${stats.totalPnl.toFixed(2)}`, icon: stats.totalPnl >= 0 ? TrendingUp : TrendingDown, color: stats.totalPnl >= 0 ? "text-success" : "text-danger" },
-    { label: "Прибыльных", value: String(stats.wins), icon: TrendingUp, color: "text-success" },
-    { label: "Убыточных", value: String(stats.total - stats.wins), icon: TrendingDown, color: "text-danger" },
-  ];
+  const pairData = useMemo(() => {
+    const map: Record<string, { netPnl: number; count: number }> = {};
+    trades.forEach((t) => {
+      if (!map[t.symbol]) map[t.symbol] = { netPnl: 0, count: 0 };
+      map[t.symbol].netPnl += t.net_pnl || 0;
+      map[t.symbol].count += 1;
+    });
+    return Object.entries(map).map(([pair, d]) => ({ pair, netPnl: Math.round(d.netPnl * 100) / 100, count: d.count }));
+  }, [trades]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Аналитика</h1>
-        <p className="text-sm text-text-secondary mt-0.5">Статистика и инсайты</p>
+      <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
+        {kpiCards.map((s) => {
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className="rounded-xl p-4" style={{ background: "#12121f", border: "1px solid #1e1e2e" }}>
+              <Icon className="w-4 h-4 mb-1" style={{ color: s.color }} />
+              <div className="font-mono text-xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</div>
+              <div className="text-xs text-[#94a3b8] mt-0.5">{s.label}</div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
-        {statCards.map((s) => (
-          <div key={s.label} className="bg-surface border border-[#1e1e2e] rounded-xl p-4 hover:border-[#2a2a40] transition-all">
-            <s.icon className={`w-5 h-5 ${s.color} mb-2`} />
-            <div className="font-mono text-xl font-bold text-text-primary tabular-nums">{s.value}</div>
-            <div className="text-xs text-text-secondary mt-0.5">{s.label}</div>
+      {trades.length === 0 ? (
+        <div className="rounded-xl p-8 text-center" style={{ background: "#12121f", border: "1px solid #1e1e2e" }}>
+          <Activity className="w-8 h-8 text-[#64748b] mx-auto mb-3" />
+          <p className="text-sm text-[#64748b]">Нет данных о сделках</p>
+        </div>
+      ) : (
+        <>
+          <div className="rounded-xl p-5" style={{ background: "#12121f", border: "1px solid #1e1e2e" }}>
+            <h3 className="text-sm font-semibold text-[#f1f5f9] mb-4">Кумулятивный P&L</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={cumulativeData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                <XAxis dataKey="idx" stroke={chartTheme.axis} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
+                <YAxis stroke={chartTheme.axis} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={(v: number) => `${v.toFixed(0)}`} />
+                <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: "8px", color: chartTheme.text, fontSize: "13px" }}
+                  formatter={(value: number) => [`${value >= 0 ? "+" : ""}${value.toFixed(2)} USDT`, "Cumulative P&L"]} labelFormatter={(label: number) => `Сделка #${label}`} />
+                <Line type="monotone" dataKey="cumulative" stroke={chartTheme.line} strokeWidth={2} dot={false} activeDot={{ r: 4, fill: chartTheme.line }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-        ))}
-      </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-surface border border-[#1e1e2e] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-3">P&L по дням</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={dailyPnl}>
-              <defs>
-                <linearGradient id="pnlGrad2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00d4aa" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#00d4aa" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" vertical={false} />
-              <XAxis dataKey="day" tick={{ fontSize: 12, fill: "#64748b" }} />
-              <YAxis tick={{ fontSize: 12, fill: "#64748b" }} width={50} tickFormatter={(v: number) => `$${v}`} />
-              <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid #2a2a40", borderRadius: 8, color: "#f1f5f9" }}
-                formatter={(value: number) => [`$${value.toFixed(2)}`, "P&L"]} />
-              <Area type="monotone" dataKey="pnl" stroke="#00d4aa" strokeWidth={2} fill="url(#pnlGrad2)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-surface border border-[#1e1e2e] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-text-primary mb-3">Сделок в день</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={dailyPnl}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" vertical={false} />
-              <XAxis dataKey="day" tick={{ fontSize: 12, fill: "#64748b" }} />
-              <YAxis tick={{ fontSize: 12, fill: "#64748b" }} width={30} />
-              <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid #2a2a40", borderRadius: 8, color: "#f1f5f9" }}
-                formatter={(value: number) => [String(value), "Сделки"]} />
-              <Bar dataKey="trades" fill="#6366f1" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+          <div className="rounded-xl p-5" style={{ background: "#12121f", border: "1px solid #1e1e2e" }}>
+            <h3 className="text-sm font-semibold text-[#f1f5f9] mb-4">P&L по парам</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={pairData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                <XAxis dataKey="pair" stroke={chartTheme.axis} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
+                <YAxis stroke={chartTheme.axis} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={(v: number) => `${v.toFixed(0)}`} />
+                <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: "8px", color: chartTheme.text, fontSize: "13px" }}
+                  formatter={(_value: number, _name: string, props: any) => {
+                    const pnl = props?.payload?.netPnl; const count = props?.payload?.count;
+                    return [`${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} USDT (${count} сделок)`, "Net P&L"];
+                  }} />
+                <Bar dataKey="netPnl" fill={chartTheme.bar} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
     </div>
   );
 }

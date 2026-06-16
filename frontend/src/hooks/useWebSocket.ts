@@ -1,18 +1,12 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useDashboardStore } from "@/store/dashboardStore";
+import { useEffect, useRef, useCallback } from "react";
+import { useDashboardStore } from "../store/dashboardStore";
 
-type WSStatus = "connecting" | "connected" | "disconnected";
-
-/**
- * WebSocket hook с auto-reconnect.
- * URL определяется автоматически: /ws через nginx reverse proxy.
- */
 const DEFAULT_WS_URL = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
 
 export function useWebSocket(url: string = DEFAULT_WS_URL) {
-  const [status, setStatus] = useState<WSStatus>("connecting");
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempt = useRef(0);
+  const setWsConnected = useDashboardStore((s) => s.setWsConnected);
   const addPrice = useDashboardStore((s) => s.addPrice);
   const addOpportunity = useDashboardStore((s) => s.addOpportunity);
   const addTrade = useDashboardStore((s) => s.addTrade);
@@ -21,15 +15,17 @@ export function useWebSocket(url: string = DEFAULT_WS_URL) {
     try {
       const ws = new WebSocket(url);
       wsRef.current = ws;
-      setStatus("connecting");
+      setWsConnected(false);
 
       ws.onopen = () => {
-        setStatus("connected");
+        setWsConnected(true);
         reconnectAttempt.current = 0;
-        ws.send(JSON.stringify({ action: "subscribe", channel: "all" }));
+        try {
+          ws.send(JSON.stringify({ action: "subscribe", channel: "all" }));
+        } catch { /* ignore */ }
       };
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === "price_tick" && msg.data) {
@@ -65,11 +61,11 @@ export function useWebSocket(url: string = DEFAULT_WS_URL) {
               executed_at: new Date().toISOString(),
             });
           }
-        } catch { /* ignore */ }
+        } catch { /* ignore invalid JSON */ }
       };
 
       ws.onclose = () => {
-        setStatus("disconnected");
+        setWsConnected(false);
         const delay = Math.min(1000 * Math.pow(2, reconnectAttempt.current), 30000);
         reconnectAttempt.current++;
         setTimeout(connect, delay);
@@ -77,14 +73,14 @@ export function useWebSocket(url: string = DEFAULT_WS_URL) {
 
       ws.onerror = () => ws.close();
     } catch {
-      setStatus("disconnected");
+      setWsConnected(false);
     }
-  }, [url, addPrice, addOpportunity, addTrade]);
+  }, [url, setWsConnected, addPrice, addOpportunity, addTrade]);
 
   useEffect(() => {
     connect();
-    return () => { wsRef.current?.close(); };
+    return () => wsRef.current?.close();
   }, [connect]);
 
-  return { status };
+  return { status: wsRef.current?.readyState === WebSocket.OPEN ? "connected" : "disconnected" as "connecting" | "connected" | "disconnected" };
 }

@@ -98,15 +98,14 @@ app.middleware("http")(error_handling_middleware)
 app.middleware("http")(logging_middleware)
 app.middleware("http")(csrf_middleware)
 
-# CORS отключён — nginx reverse proxy обеспечивает same-origin.
-# При необходимости direct access раскомментируйте:
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["http://localhost:5173"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+# CORS включён для development (nginx proxy в production)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:80", "http://localhost"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Prometheus metrics
 metrics_app = make_asgi_app()
