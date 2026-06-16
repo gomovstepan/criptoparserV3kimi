@@ -20,17 +20,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await login(email, password);
-      if (data?.access_token) {
-        authLogin(data.access_token, email);
-        navigate("/dashboard");
-      } else {
-        setErr("Неверный ответ сервера");
-      }
+      if (data?.access_token) { authLogin(data.access_token, email); navigate("/dashboard"); }
+      else { setErr("Неверный ответ сервера"); }
     } catch (error: any) {
       setErr(error.response?.data?.detail || "Неверный email или пароль");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -54,7 +48,6 @@ export default function LoginPage() {
           </ul>
         </div>
       </div>
-
       <div className="flex-1 flex items-center justify-center px-6" style={{ background: "#0a0a14" }}>
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">

@@ -53,9 +53,7 @@ export default function Trades() {
       </div>
 
       <div className="rounded-xl overflow-hidden" style={{ background: "#12121f", border: "1px solid #1e1e2e" }}>
-        {filtered.length === 0 ? (
-          <div className="p-8 text-center text-sm text-[#64748b]">{trades.length === 0 ? "Нет сделок" : "Ничего не найдено"}</div>
-        ) : (
+        {filtered.length === 0 ? <div className="p-8 text-center text-sm text-[#64748b]">{trades.length === 0 ? "Нет сделок" : "Ничего не найдено"}</div> : (
           <>
             <table className="w-full">
               <thead><tr style={{ background: "#0f0f1a" }}>

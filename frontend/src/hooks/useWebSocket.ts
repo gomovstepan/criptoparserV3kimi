@@ -20,9 +20,7 @@ export function useWebSocket(url: string = DEFAULT_WS_URL) {
       ws.onopen = () => {
         setWsConnected(true);
         reconnectAttempt.current = 0;
-        try {
-          ws.send(JSON.stringify({ action: "subscribe", channel: "all" }));
-        } catch { /* ignore */ }
+        try { ws.send(JSON.stringify({ action: "subscribe", channel: "all" })); } catch {}
       };
 
       ws.onmessage = (event: MessageEvent) => {
@@ -61,7 +59,7 @@ export function useWebSocket(url: string = DEFAULT_WS_URL) {
               executed_at: new Date().toISOString(),
             });
           }
-        } catch { /* ignore invalid JSON */ }
+        } catch {}
       };
 
       ws.onclose = () => {
@@ -72,15 +70,13 @@ export function useWebSocket(url: string = DEFAULT_WS_URL) {
       };
 
       ws.onerror = () => ws.close();
-    } catch {
-      setWsConnected(false);
-    }
+    } catch { setWsConnected(false); }
   }, [url, setWsConnected, addPrice, addOpportunity, addTrade]);
 
   useEffect(() => {
     connect();
-    return () => wsRef.current?.close();
+    return () => { wsRef.current?.close(); };
   }, [connect]);
 
-  return { status: wsRef.current?.readyState === WebSocket.OPEN ? "connected" : "disconnected" as "connecting" | "connected" | "disconnected" };
+  return { status: wsRef.current?.readyState === WebSocket.OPEN ? "connected" : "disconnected" as any };
 }

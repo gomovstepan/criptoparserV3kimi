@@ -1,9 +1,6 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import {
-  LayoutDashboard, Zap, ArrowLeftRight, BarChart3,
-  Building2, Settings, Activity, LogOut,
-} from "lucide-react";
+import { LayoutDashboard, Zap, ArrowLeftRight, BarChart3, Building2, Settings, Activity, LogOut } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useDashboardStore } from "../store/dashboardStore";
 import { useWebSocket } from "../hooks/useWebSocket";
@@ -63,13 +60,11 @@ export default function Layout() {
           })}
         </nav>
         <div className="px-4 pt-4 pb-4" style={{ borderTop: "1px solid #1e1e2e" }}>
-          <button onClick={() => { logout(); navigate("/login"); }}
-            className="flex items-center gap-2 text-sm transition-colors text-[#94a3b8] hover:text-[#f1f5f9]">
+          <button onClick={() => { logout(); navigate("/login"); }} className="flex items-center gap-2 text-sm transition-colors text-[#94a3b8] hover:text-[#f1f5f9]">
             <LogOut className="w-4 h-4" /> Выйти
           </button>
         </div>
       </aside>
-
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-14 flex items-center justify-between px-6 flex-shrink-0" style={{ background: "#0a0a14", borderBottom: "1px solid #1e1e2e" }}>
           <div>

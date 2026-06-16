@@ -39,8 +39,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => fetchAll()}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[#94a3b8] hover:text-[#f1f5f9] transition-colors"
+          <button onClick={() => fetchAll()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[#94a3b8] hover:text-[#f1f5f9] transition-colors"
             style={{ background: "#12121f", border: "1px solid #1e1e2e" }}>
             <RefreshCw className="w-3.5 h-3.5" /> Обновить
           </button>
@@ -69,16 +68,14 @@ export default function Dashboard() {
         <div className="grid grid-cols-7 gap-3">
           {exchanges.map((ex) => {
             const st = exchangeStatus[ex.id];
-            const connected = st?.connected;
-            const lat = st?.latency || 0;
             return (
               <div key={ex.id} className="rounded-lg p-3 text-center" style={{ background: "#0f0f1a" }}>
                 <div className="w-9 h-9 rounded-full flex items-center justify-center mx-auto mb-2 text-xs font-bold text-[#f1f5f9]" style={{ background: "#1a1a2e" }}>{ex.name.slice(0, 2)}</div>
                 <div className="text-xs text-[#f1f5f9] mb-1">{ex.name}</div>
-                {connected ? (
+                {st?.connected ? (
                   <div className="flex items-center justify-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
-                    <span className="text-[10px] text-[#22c55e]">{lat}ms</span>
+                    <span className="text-[10px] text-[#22c55e]">{st.latency}ms</span>
                   </div>
                 ) : <span className="text-[10px] text-[#ef4444]">Offline</span>}
               </div>
@@ -93,9 +90,7 @@ export default function Dashboard() {
             <h3 className="text-sm font-semibold text-[#f1f5f9]">Топ возможностей</h3>
             <button onClick={() => navigate("/opportunities")} className="text-xs text-[#00d4aa] hover:underline">Все →</button>
           </div>
-          {opportunities.length === 0 ? (
-            <div className="p-8 text-center text-sm text-[#64748b]">Нет активных возможностей</div>
-          ) : (
+          {opportunities.length === 0 ? <div className="p-8 text-center text-sm text-[#64748b]">Нет активных возможностей</div> : (
             <table className="w-full">
               <thead><tr style={{ background: "#0f0f1a" }}>
                 {["Пара", "Спред", "Покупка", "Продажа", "Net"].map((h) => <th key={h} className="text-left px-4 py-2.5 text-[13px] font-medium text-[#94a3b8]">{h}</th>)}
@@ -120,9 +115,7 @@ export default function Dashboard() {
             <h3 className="text-sm font-semibold text-[#f1f5f9]">Последние сделки</h3>
             <button onClick={() => navigate("/trades")} className="text-xs text-[#00d4aa] hover:underline">Все →</button>
           </div>
-          {trades.length === 0 ? (
-            <div className="p-8 text-center text-sm text-[#64748b]">Нет сделок</div>
-          ) : (
+          {trades.length === 0 ? <div className="p-8 text-center text-sm text-[#64748b]">Нет сделок</div> : (
             <table className="w-full">
               <thead><tr style={{ background: "#0f0f1a" }}>
                 {["Пара", "Маршрут", "Объём", "P&L", "Статус"].map((h) => <th key={h} className="text-left px-4 py-2.5 text-[13px] font-medium text-[#94a3b8]">{h}</th>)}
@@ -135,7 +128,8 @@ export default function Dashboard() {
                     <td className="px-4 py-3 font-mono text-sm text-[#f1f5f9]">{t.amount?.toFixed(4) || "—"}</td>
                     <td className="px-4 py-3"><PnLColor v={t.net_pnl} /></td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium" style={{ background: t.status === "completed" ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: t.status === "completed" ? "#22c55e" : "#ef4444" }}>
+                      <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium"
+                        style={{ background: t.status === "completed" ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: t.status === "completed" ? "#22c55e" : "#ef4444" }}>
                         {t.status === "completed" ? "Завершена" : t.status}
                       </span>
                     </td>

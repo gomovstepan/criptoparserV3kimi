@@ -25,7 +25,6 @@
     --ring: 240 5.9% 10%;
     --radius: 0.75rem;
   }
-
   .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
@@ -47,14 +46,8 @@
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
   }
-
   * { @apply border-border; }
-
-  body {
-    @apply bg-background text-foreground;
-    margin: 0;
-    padding: 0;
-  }
+  body { @apply bg-background text-foreground; margin: 0; padding: 0; }
 }
 
 ::-webkit-scrollbar { width: 6px; }

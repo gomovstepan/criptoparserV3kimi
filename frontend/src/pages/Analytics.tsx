@@ -3,10 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { TrendingUp, TrendingDown, BarChart3, Target, DollarSign, Activity } from "lucide-react";
 import { useDashboardStore } from "../store/dashboardStore";
 
-const chartTheme = {
-  axis: "#64748b", grid: "#1e1e2e", line: "#00d4aa", bar: "#00d4aa",
-  tooltipBg: "#12121f", tooltipBorder: "#1e1e2e", text: "#f1f5f9",
-};
+const chartTheme = { axis: "#64748b", grid: "#1e1e2e", line: "#00d4aa", bar: "#00d4aa", tooltipBg: "#12121f", tooltipBorder: "#1e1e2e", text: "#f1f5f9" };
 
 export default function Analytics() {
   const { trades } = useDashboardStore();
@@ -26,19 +23,12 @@ export default function Analytics() {
 
   const cumulativeData = useMemo(() => {
     let cum = 0;
-    return trades.map((t, i) => {
-      cum += t.net_pnl || 0;
-      return { idx: i + 1, cumulative: Math.round(cum * 100) / 100, pnl: t.net_pnl || 0 };
-    });
+    return trades.map((t, i) => { cum += t.net_pnl || 0; return { idx: i + 1, cumulative: Math.round(cum * 100) / 100 }; });
   }, [trades]);
 
   const pairData = useMemo(() => {
     const map: Record<string, { netPnl: number; count: number }> = {};
-    trades.forEach((t) => {
-      if (!map[t.symbol]) map[t.symbol] = { netPnl: 0, count: 0 };
-      map[t.symbol].netPnl += t.net_pnl || 0;
-      map[t.symbol].count += 1;
-    });
+    trades.forEach((t) => { if (!map[t.symbol]) map[t.symbol] = { netPnl: 0, count: 0 }; map[t.symbol].netPnl += t.net_pnl || 0; map[t.symbol].count += 1; });
     return Object.entries(map).map(([pair, d]) => ({ pair, netPnl: Math.round(d.netPnl * 100) / 100, count: d.count }));
   }, [trades]);
 
@@ -72,7 +62,7 @@ export default function Analytics() {
                 <XAxis dataKey="idx" stroke={chartTheme.axis} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
                 <YAxis stroke={chartTheme.axis} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={(v: number) => `${v.toFixed(0)}`} />
                 <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: "8px", color: chartTheme.text, fontSize: "13px" }}
-                  formatter={(value: number) => [`${value >= 0 ? "+" : ""}${value.toFixed(2)} USDT`, "Cumulative P&L"]} labelFormatter={(label: number) => `Сделка #${label}`} />
+                  formatter={(value: number) => [`${(value as number) >= 0 ? "+" : ""}${(value as number).toFixed(2)} USDT`, "Cumulative P&L"]} labelFormatter={(label: any) => `Сделка #${label}`} />
                 <Line type="monotone" dataKey="cumulative" stroke={chartTheme.line} strokeWidth={2} dot={false} activeDot={{ r: 4, fill: chartTheme.line }} />
               </LineChart>
             </ResponsiveContainer>
@@ -86,10 +76,7 @@ export default function Analytics() {
                 <XAxis dataKey="pair" stroke={chartTheme.axis} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
                 <YAxis stroke={chartTheme.axis} tick={{ fill: chartTheme.axis, fontSize: 12 }} tickFormatter={(v: number) => `${v.toFixed(0)}`} />
                 <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: "8px", color: chartTheme.text, fontSize: "13px" }}
-                  formatter={(_value: number, _name: string, props: any) => {
-                    const pnl = props?.payload?.netPnl; const count = props?.payload?.count;
-                    return [`${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)} USDT (${count} сделок)`, "Net P&L"];
-                  }} />
+                  formatter={(value: any, _name: any, props: any) => [`${props?.payload?.netPnl >= 0 ? "+" : ""}${props?.payload?.netPnl?.toFixed(2)} USDT (${props?.payload?.count} сделок)`, "Net P&L"]} />
                 <Bar dataKey="netPnl" fill={chartTheme.bar} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

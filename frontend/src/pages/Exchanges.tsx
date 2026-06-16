@@ -29,7 +29,7 @@ export default function Exchanges() {
   const [activeOnly, setActiveOnly] = useState(false);
 
   useEffect(() => {
-    getExchanges().then((res) => { if (res && Object.keys(res).length > 0) setData(res); }).catch(() => {}).finally(() => setLoading(false));
+    getExchanges().then((res: any) => { if (res && Object.keys(res).length > 0) setData(res); }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   const entries = Object.entries(data).filter(([, info]) => !activeOnly || info.is_active);
@@ -61,28 +61,11 @@ export default function Exchanges() {
           <tbody>
             {entries.map(([id, info]) => {
               const st = exchangeStatus[id];
-              const connected = st?.connected;
-              const lat = st?.latency || 0;
               return (
                 <tr key={id} className="border-b border-[#1e1e2e] hover:bg-white/[0.03] transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-[#f1f5f9]" style={{ background: "#1a1a2e" }}>{info.exchange.slice(0, 2)}</div>
-                      <span className="text-sm font-semibold text-[#f1f5f9]">{info.exchange}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {info.is_active ? (
-                      <span className="flex items-center gap-1 text-xs text-[#22c55e]"><Wifi className="w-3.5 h-3.5" /> Online</span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-xs text-[#ef4444]"><WifiOff className="w-3.5 h-3.5" /> Offline</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {connected ? (
-                      <span className="text-sm font-mono" style={{ color: lat < 100 ? "#22c55e" : lat < 300 ? "#f59e0b" : "#ef4444" }}>{lat}ms</span>
-                    ) : <span className="text-sm text-[#64748b]">—</span>}
-                  </td>
+                  <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-[#f1f5f9]" style={{ background: "#1a1a2e" }}>{info.exchange.slice(0, 2)}</div><span className="text-sm font-semibold text-[#f1f5f9]">{info.exchange}</span></div></td>
+                  <td className="px-4 py-3">{info.is_active ? <span className="flex items-center gap-1 text-xs text-[#22c55e]"><Wifi className="w-3.5 h-3.5" /> Online</span> : <span className="flex items-center gap-1 text-xs text-[#ef4444]"><WifiOff className="w-3.5 h-3.5" /> Offline</span>}</td>
+                  <td className="px-4 py-3">{st?.connected ? <span className="text-sm font-mono" style={{ color: (st.latency || 0) < 100 ? "#22c55e" : (st.latency || 0) < 300 ? "#f59e0b" : "#ef4444" }}>{st.latency}ms</span> : <span className="text-sm text-[#64748b]">—</span>}</td>
                   <td className="px-4 py-3 font-mono text-sm text-[#f1f5f9]">{info.maker_fee_pct}%</td>
                   <td className="px-4 py-3 font-mono text-sm text-[#f1f5f9]">{info.taker_fee_pct}%</td>
                   <td className="px-4 py-3 font-mono text-sm text-[#f1f5f9]">{info.withdrawal_btc ?? "0"}</td>

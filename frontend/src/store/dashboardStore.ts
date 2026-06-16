@@ -81,26 +81,20 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   lastUpdated: "",
 
   setPrices: (prices) => set({ prices }),
-  setOpportunities: (opportunities) =>
-    set({ opportunities, lastUpdated: new Date().toLocaleTimeString("ru-RU") }),
+  setOpportunities: (opportunities) => set({ opportunities, lastUpdated: new Date().toLocaleTimeString("ru-RU") }),
   setTrades: (trades) => set({ trades }),
   setBalances: (balances) => set({ balances }),
   setExchangeStatus: (status) => set({ exchangeStatus: status }),
   setWsConnected: (c) => set({ wsConnected: c }),
 
-  addPrice: (price) =>
-    set((state) => ({ prices: [price, ...state.prices].slice(0, 1000) })),
-
-  addOpportunity: (opp) =>
-    set((state) => ({
-      opportunities: [opp, ...state.opportunities.filter((o) => o.id !== opp.id)].slice(0, 100),
-      lastUpdated: new Date().toLocaleTimeString("ru-RU"),
-    })),
-
-  addTrade: (trade) =>
-    set((state) => ({
-      trades: [trade, ...state.trades.filter((t) => t.id !== trade.id)].slice(0, 500),
-    })),
+  addPrice: (price) => set((state) => ({ prices: [price, ...state.prices].slice(0, 1000) })),
+  addOpportunity: (opp) => set((state) => ({
+    opportunities: [opp, ...state.opportunities.filter((o) => o.id !== opp.id)].slice(0, 100),
+    lastUpdated: new Date().toLocaleTimeString("ru-RU"),
+  })),
+  addTrade: (trade) => set((state) => ({
+    trades: [trade, ...state.trades.filter((t) => t.id !== trade.id)].slice(0, 500),
+  })),
 
   fetchOpportunities: async () => {
     try {
@@ -121,9 +115,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
           lastUpdated: new Date().toLocaleTimeString("ru-RU"),
         });
       }
-    } catch (e) {
-      console.warn("fetchOpportunities failed:", e);
-    }
+    } catch (e) { console.warn("fetchOpportunities failed:", e); }
   },
 
   fetchTrades: async () => {
@@ -144,18 +136,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
           })),
         });
       }
-    } catch (e) {
-      console.warn("fetchTrades failed:", e);
-    }
+    } catch (e) { console.warn("fetchTrades failed:", e); }
   },
 
   fetchBalance: async () => {
     try {
       const data = await getBalance();
       if (data) set({ balances: data });
-    } catch (e) {
-      console.warn("fetchBalance failed:", e);
-    }
+    } catch (e) { console.warn("fetchBalance failed:", e); }
   },
 
   fetchAll: async () => {

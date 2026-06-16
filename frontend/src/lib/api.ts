@@ -9,9 +9,7 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -58,10 +56,5 @@ export async function getExchanges() {
 
 export async function getSettings() {
   const res = await api.get("/settings");
-  return res.data;
-}
-
-export async function getHealth() {
-  const res = await axios.get("/health", { timeout: 5000 });
   return res.data;
 }

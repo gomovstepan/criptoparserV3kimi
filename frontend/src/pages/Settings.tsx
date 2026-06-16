@@ -39,11 +39,8 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setSaving(true); setSaved(false);
-    try {
-      await api.put("/settings", s);
-      setSaved(true); setOriginal({ ...s });
-      setTimeout(() => setSaved(false), 3000);
-    } catch (e) { console.error("Save failed:", e); }
+    try { await api.put("/settings", s); setSaved(true); setOriginal({ ...s }); setTimeout(() => setSaved(false), 3000); }
+    catch (e) { console.error("Save failed:", e); }
     finally { setSaving(false); }
   };
 
@@ -104,16 +101,6 @@ export default function SettingsPage() {
           </div>
         )}
         {killStatus && <p className="text-xs mt-3" style={{ color: killStatus.startsWith("error") ? "#ef4444" : "#22c55e" }}>{killStatus}</p>}
-      </div>
-
-      <div className="rounded-xl p-5" style={{ background: "#12121f", border: "1px solid #1e1e2e" }}>
-        <h3 className="text-sm font-semibold text-[#f1f5f9] mb-2">Описание параметров</h3>
-        <div className="space-y-2 text-xs text-[#94a3b8]">
-          <p><strong className="text-[#f1f5f9]">Минимальный спред</strong> — минимальный процент спреда для срабатывания сканера.</p>
-          <p><strong className="text-[#f1f5f9]">Макс. позиция</strong> — максимальный % от баланса для одной сделки.</p>
-          <p><strong className="text-[#f1f5f9]">Slippage</strong> — ожидаемое проскальзывание цены при исполнении.</p>
-          <p><strong className="text-[#f1f5f9]">Таймаут</strong> — максимальное время на исполнение сделки.</p>
-        </div>
       </div>
     </div>
   );
